@@ -1,13 +1,15 @@
 const fs = require('fs');
 const readline = require('readline');
 
-const filePath = 'temp_file_1.txt';
-const blockSize = 2 ** 24;
-const dirName = 'temp_';
-const largeFileName = 'large-file.txt';
+const originFilePath = 'large-file.txt';
+const sortedLargeFileName = 'sorted-large-file.txt';
 const tempFileName = 'temp_file_';
 
-const fileDir = fs.mkdtempSync(dirName) + '/';
+const tempDirName = 'temp_';
+
+const blockSize = 2 ** 24;
+
+const tempFilesDir = fs.mkdtempSync(tempDirName) + '/';
 
 async function fileReader(filePath, blockSize) {
     return new Promise((resolve, reject) => {
@@ -22,7 +24,7 @@ async function fileReader(filePath, blockSize) {
                 .sort((a, b) => a.localeCompare(b))
                 .join('\n');
 
-            fs.writeFileSync(`${fileDir}${tempFileName}${++index}.txt`, data, {flag: "w+"});
+            fs.writeFileSync(`${tempFilesDir}${tempFileName}${++index}.txt`, data, {flag: "w+"});
         })
 
         input.on('close', () => {
@@ -108,13 +110,13 @@ async function mergeTempFilesToLargeFile(largeFileName) {
     const numberOfFilesStreams = 5;
     let iteration = 0;
 
-    await fileReader(filePath, blockSize);
+    await fileReader(originFilePath, blockSize);
 
     while (true) {
         ++iteration;
 
-        let files =  fs.readdirSync(fileDir);
-        files = files.filter((el) => el.includes(tempFileName)).map((el) => fileDir + el);
+        let files =  fs.readdirSync(tempFilesDir);
+        files = files.filter((el) => el.includes(tempFileName)).map((el) => tempFilesDir + el);
 
         if (files.length === 1) {
             fs.copyFileSync(files.at(0), largeFileName)
@@ -130,14 +132,14 @@ async function mergeTempFilesToLargeFile(largeFileName) {
         }
 
         for (let i = 0; i <= files.length; i += numberOfFilesStreams) {
-            await mergeSortingFiles(files.slice(i, i + numberOfFilesStreams), fileDir + `${tempFileName}${iteration}_${i}.txt`);
+            await mergeSortingFiles(files.slice(i, i + numberOfFilesStreams), tempFilesDir + `${tempFileName}${iteration}_${i}.txt`);
         }
     }
 
-    fs.rmdirSync(fileDir);
+    fs.rmdirSync(tempFilesDir);
 }
 
-mergeTempFilesToLargeFile(largeFileName)
+mergeTempFilesToLargeFile(sortedLargeFileName)
     .then(() => {
         console.log('Successfully sorted and merged')
     })
